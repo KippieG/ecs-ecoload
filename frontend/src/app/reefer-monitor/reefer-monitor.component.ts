@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { ApiService } from '../shared/services/api.service';
@@ -10,104 +10,110 @@ import { ReeferContainer, CriticalAlert } from '../shared/models/reefer.model';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="reefer-monitor">
+    <div>
       <div class="section-header">
-        <h2>Koelcontainer Monitoring</h2>
-        <span class="live-badge">● LIVE</span>
+        <div>
+          <h2 class="section-title">Koelcontainer Monitoring</h2>
+          <p class="section-sub">{{ reefers.length }} containers · live telemetrie via SignalR</p>
+        </div>
+        <span class="live-pill">● LIVE</span>
       </div>
 
-      <div *ngFor="let alert of alerts" class="critical-alert">
-        <span class="alert-icon">⚠</span> {{ alert.message }}
+      <div *ngFor="let alert of alerts" class="crit-alert">
+        <span class="crit-icon">⚠</span>
+        <span>{{ alert.message }}</span>
       </div>
 
       <div class="reefer-grid">
-        <div *ngFor="let r of reefers" class="reefer-card" [class]="'status-' + r.status.toLowerCase()">
-          <div class="reefer-header">
-            <span class="container-num">{{ r.containerNumber }}</span>
-            <span class="status-badge" [class]="'badge-' + r.status.toLowerCase()">{{ r.status }}</span>
+        <div *ngFor="let r of reefers" class="reefer-card" [class]="getCardClass(r)">
+          <div class="card-top">
+            <span class="cnum">{{ r.containerNumber }}</span>
+            <span class="status-pill" [class]="getPillClass(r)">{{ statusLabel(r.status) }}</span>
           </div>
-          <div class="reefer-client">{{ r.client }} → {{ r.destination }}</div>
+          <div class="card-client">{{ r.client }} <span class="arrow">→</span> {{ r.destination }}</div>
 
-          <div class="temp-display">
-            <div class="current-temp" [class.out-of-range]="r.isOutOfRange">
-              {{ r.currentTemp | number:'1.1-1' }}°C
+          <div class="temp-block">
+            <div class="temp-val" [class.temp-bad]="r.isOutOfRange">
+              {{ r.currentTemp | number:'1.1-1' }}<span class="temp-unit">°C</span>
             </div>
-            <div class="target-range">doel: {{ r.targetTempMin }}°C tot {{ r.targetTempMax }}°C</div>
+            <div class="temp-target">Doel: {{ r.targetTempMin }}° – {{ r.targetTempMax }}°C</div>
           </div>
 
-          <div class="temp-bar-container">
-            <div class="temp-bar" [style.width.%]="getTempBarPct(r)" [class]="'bar-' + r.status.toLowerCase()"></div>
+          <div class="bar-wrap">
+            <div class="bar-track">
+              <div class="bar-fill" [style.width.%]="getBarPct(r)" [class]="getBarClass(r)"></div>
+            </div>
           </div>
 
-          <div class="reefer-footer">
+          <div class="card-bottom">
             <span *ngIf="r.isOutOfRange" class="deviation">
               ↑ {{ r.deviationCelsius | number:'1.1-1' }}°C afwijking
             </span>
-            <span class="last-update">{{ r.lastReading | date:'HH:mm:ss' }}</span>
+            <span *ngIf="!r.isOutOfRange" class="ok-text">Binnen bereik</span>
+            <span class="ts">{{ r.lastReading | date:'HH:mm:ss' }}</span>
           </div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .reefer-monitor { padding: 0 0 24px; }
-    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-    .section-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; color: #e2e8f0; }
-    .live-badge { font-size: 0.7rem; color: #48bb78; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .section-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+    .section-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+    .section-sub { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+    .live-pill { font-size: 0.68rem; color: var(--status-ok); animation: pulse 1.5s infinite; font-weight: 600; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-    .critical-alert {
-      background: linear-gradient(135deg, #7f1d1d, #991b1b);
-      border: 1px solid #ef4444;
-      border-radius: 8px;
-      padding: 10px 16px;
-      margin-bottom: 12px;
-      color: #fca5a5;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .crit-alert {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--status-crit-bg); border: 1px solid var(--status-crit);
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
+      font-size: 0.8rem; color: #fca5a5;
     }
-    .alert-icon { font-size: 1rem; }
+    .crit-icon { color: var(--status-crit); font-size: 1rem; }
 
-    .reefer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .reefer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
 
     .reefer-card {
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 14px;
-      border: 1px solid #334155;
-      transition: all 0.3s ease;
+      background: var(--bg-card-2); border: 1px solid var(--bg-border);
+      border-radius: 12px; padding: 14px; transition: border-color 0.3s;
     }
-    .reefer-card.status-critical { border-color: #ef4444; background: #1c1010; }
-    .reefer-card.status-warning { border-color: #f59e0b; }
+    .reefer-card.card-critical { border-color: var(--status-crit); background: var(--status-crit-bg); }
+    .reefer-card.card-warning  { border-color: var(--status-warn); }
+    .reefer-card.card-normal   { border-color: var(--bg-border); }
 
-    .reefer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .container-num { font-size: 0.75rem; font-weight: 700; color: #94a3b8; font-family: monospace; }
-    .status-badge { font-size: 0.65rem; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
-    .badge-normal { background: #064e3b; color: #6ee7b7; }
-    .badge-warning { background: #451a03; color: #fbbf24; }
-    .badge-critical { background: #450a0a; color: #f87171; animation: pulse 1s infinite; }
+    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .cnum { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); font-family: monospace; }
 
-    .reefer-client { font-size: 0.75rem; color: #64748b; margin-bottom: 12px; }
+    .status-pill { font-size: 0.62rem; padding: 2px 8px; border-radius: 99px; font-weight: 700; }
+    .pill-normal   { background: var(--status-ok-bg); color: var(--status-ok); }
+    .pill-warning  { background: var(--status-warn-bg); color: var(--status-warn); }
+    .pill-critical { background: var(--status-crit-bg); color: var(--status-crit); animation: pulse 1s infinite; }
 
-    .temp-display { text-align: center; margin-bottom: 8px; }
-    .current-temp { font-size: 2rem; font-weight: 700; color: #38bdf8; transition: color 0.3s; }
-    .current-temp.out-of-range { color: #f87171; }
-    .target-range { font-size: 0.7rem; color: #64748b; margin-top: 2px; }
+    .card-client { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 12px; }
+    .arrow { color: var(--text-muted); }
 
-    .temp-bar-container { height: 4px; background: #0f172a; border-radius: 2px; margin-bottom: 10px; overflow: hidden; }
-    .temp-bar { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-    .bar-normal { background: #10b981; }
-    .bar-warning { background: #f59e0b; }
-    .bar-critical { background: #ef4444; }
+    .temp-block { text-align: center; margin-bottom: 8px; }
+    .temp-val { font-size: 2.2rem; font-weight: 800; color: var(--ecs-accent); transition: color 0.3s; }
+    .temp-val.temp-bad { color: var(--status-crit); }
+    .temp-unit { font-size: 1rem; font-weight: 400; }
+    .temp-target { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; }
 
-    .reefer-footer { display: flex; justify-content: space-between; align-items: center; }
-    .deviation { font-size: 0.7rem; color: #f87171; }
-    .last-update { font-size: 0.65rem; color: #475569; }
+    .bar-wrap { margin-bottom: 10px; }
+    .bar-track { height: 4px; background: var(--bg-root); border-radius: 2px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+    .bar-normal   { background: var(--status-ok); }
+    .bar-warning  { background: var(--status-warn); }
+    .bar-critical { background: var(--status-crit); }
+
+    .card-bottom { display: flex; justify-content: space-between; align-items: center; }
+    .deviation { font-size: 0.68rem; color: var(--status-crit); }
+    .ok-text { font-size: 0.68rem; color: var(--status-ok); }
+    .ts { font-size: 0.62rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
   `]
 })
 export class ReeferMonitorComponent implements OnInit, OnDestroy {
+  @Output() criticalCountChange = new EventEmitter<number>();
+
   reefers: ReeferContainer[] = [];
   alerts: CriticalAlert[] = [];
   private subs: Subscription[] = [];
@@ -121,28 +127,48 @@ export class ReeferMonitorComponent implements OnInit, OnDestroy {
     });
 
     this.subs.push(
-      this.signalr.temperatureUpdate$.subscribe(update => {
-        const reefer = this.reefers.find(r => r.id === update.id);
-        if (reefer) {
-          reefer.currentTemp = update.currentTemp;
-          reefer.status = update.status;
-          reefer.deviationCelsius = update.deviationCelsius;
-          reefer.isOutOfRange = reefer.deviationCelsius > 0;
-          reefer.lastReading = update.timestamp;
+      this.signalr.temperatureUpdate$.subscribe(u => {
+        const r = this.reefers.find(x => x.id === u.id);
+        if (r) {
+          r.currentTemp = u.currentTemp;
+          r.status = u.status;
+          r.deviationCelsius = u.deviationCelsius;
+          r.isOutOfRange = u.deviationCelsius > 0;
+          r.lastReading = u.timestamp;
+          this.emitCritical();
         }
       }),
       this.signalr.criticalAlert$.subscribe(alert => {
         this.alerts.unshift(alert);
-        if (this.alerts.length > 3) this.alerts.pop();
-        setTimeout(() => this.alerts = this.alerts.filter(a => a !== alert), 8000);
+        if (this.alerts.length > 2) this.alerts.pop();
+        setTimeout(() => { this.alerts = this.alerts.filter(a => a !== alert); }, 8000);
       })
     );
   }
 
-  getTempBarPct(r: ReeferContainer): number {
-    const range = Math.abs(r.targetTempMax - r.targetTempMin) * 3;
-    const offset = r.currentTemp - r.targetTempMin;
-    return Math.min(100, Math.max(0, (offset / range) * 100));
+  private emitCritical() {
+    this.criticalCountChange.emit(this.reefers.filter(r => r.status === 'Critical').length);
+  }
+
+  getCardClass(r: ReeferContainer) {
+    return `card-${r.status.toLowerCase()}`;
+  }
+
+  getPillClass(r: ReeferContainer) {
+    return `pill-${r.status.toLowerCase()}`;
+  }
+
+  statusLabel(s: string) {
+    return ({ Normal: 'Normaal', Warning: 'Waarschuwing', Critical: 'Kritiek', Offline: 'Offline' } as any)[s] ?? s;
+  }
+
+  getBarPct(r: ReeferContainer) {
+    const span = Math.abs(r.targetTempMax - r.targetTempMin) * 2.5;
+    return Math.min(100, Math.max(4, ((r.currentTemp - r.targetTempMin + span * 0.2) / (span * 1.4)) * 100));
+  }
+
+  getBarClass(r: ReeferContainer) {
+    return `bar-${r.status.toLowerCase()}`;
   }
 
   ngOnDestroy() { this.subs.forEach(s => s.unsubscribe()); }

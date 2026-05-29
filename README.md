@@ -1,141 +1,147 @@
+<div align="center">
+
+<img src="docs/screenshots/01-dashboard.png" alt="ECS EcoLoad Dashboard" width="100%"/>
+
 # ECS EcoLoad & Temp Optimizer
 
-> **Portfolioproject** — gebouwd als concrete demonstratie van domeinkennis voor de functie **Software Developer** bij ECS European Containers (Zeebrugge).
+**Portfolio project** — gebouwd als concrete demonstratie van domeinkennis voor de functie<br>
+**Software Developer .NET** bij [ECS European Containers](https://www.ecs.be) · Zeebrugge
 
-Een interne plannings- en monitoring tool die twee kritieke uitdagingen in de ECS supply chain aanpakt:
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
+[![Angular](https://img.shields.io/badge/Angular-17-DD0031?logo=angular&logoColor=white)](https://angular.io)
+[![SignalR](https://img.shields.io/badge/SignalR-WebSocket-00B4AB)](https://dotnet.microsoft.com/apps/aspnet/signalr)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
+[![Tests](https://img.shields.io/badge/tests-14%20passed-4ade80)](backend/tests)
+[![DDD](https://img.shields.io/badge/Architecture-DDD%20%2B%20Clean-8D1D45)](backend/src)
 
-1. **Lading-optimalisatie** van Super Mega Trailers (3m60) richting UK retail via een DDD-gebaseerde `ConsolidationEngine`
-2. **Live temperatuurmonitoring** van koelcontainers (reefers) via een Event-Driven event-stroom en SignalR WebSockets
+</div>
 
 ---
 
 ## Waarom dit project?
 
-ECS is marktleider in consolidatievervoer naar Britse supermarkten (Tesco, Sainsbury's, ASDA, Morrisons, Waitrose) met een 48-uur leveringsgarantie. Hun unique selling point is het slimme mengen van zware en lichte goederen in **Super Mega Trailers** (3m60 hoog) via automatische skimming-robots — minder ritten, minder CO₂, hogere bezettingsgraad.
+ECS is marktleider in consolidatievervoer naar Britse supermarkten (Tesco, Sainsbury's, ASDA, Morrisons, Waitrose) met een 48u-leveringsgarantie. Hun unique selling point: het slim mengen van zware en lichte goederen in **Super Mega Trailers (3m60 hoog)** — minder ritten, minder CO₂, hogere bezettingsgraad.
 
-Tegelijkertijd beheert ECS meer dan **1.000 koelcontainers** voor temperatuurgevoelige goederen (fresh, chilled, frozen). Een temperatuurafwijking van zelfs 2°C kan een volledige lading voor een supermarkt onverkoopbaar maken.
+Tegelijkertijd beheert ECS **>1.000 koelcontainers** voor temperatuurgevoelige goederen richting het VK. Een afwijking van 2°C kan een volledige supermarktzending onverkoopbaar maken.
 
-Dit project simuleert de interne tooling die een ECS-planner dagelijks zou gebruiken.
+Dit project simuleert de interne tooling die een ECS-planner en logistiek operator dagelijks zou gebruiken — en laat zien dat ik de business begrijp, niet alleen de code.
+
+---
+
+## Schermafbeeldingen
+
+### Tab 1 — Super Mega Trailer Optimizer
+
+<img src="docs/screenshots/02-trailer-optimized.png" alt="Trailer Optimizer" width="100%"/>
+
+> De **ConsolidationEngine** sorteert pallets op dichtheid (zwaar/dense onderaan, licht bovenaan) voor maximale benutting van de ECS 3m60 trailer. Visuele loading bay met kleurcodering per cargoType.
+
+### Tab 2 — Live Koelcontainer Monitoring
+
+<img src="docs/screenshots/03-reefer-monitor.png" alt="Reefer Monitor" width="100%"/>
+
+> **SignalR WebSocket** verbinding voor real-time temperatuurupdates. Kritieke afwijkingen worden binnen seconden als alert getoond aan alle verbonden operators — zonder page refresh.
+
+### Tab 3 — Brexit & Douane Validator
+
+<img src="docs/screenshots/04-customs.png" alt="Brexit Customs Check" width="100%"/>
+
+> Automatische **Brexit-documentvalidatie** per UK-zending: EUR1-certificaat, T1, CMR, PackingList. Geblokkeerde zendingen tonen exact welk document ontbreekt, inclusief waarde-drempel voor T1.
 
 ---
 
 ## Tech Stack
 
-| Laag | Technologie | Waarom |
-|------|-------------|--------|
-| **Backend** | .NET 8 · C# · ASP.NET Core | Hoofdvacature-eis |
-| **Architectuur** | Domain-Driven Design (DDD) · Clean Architecture | Schaalbaar, testbaar, SOLID |
-| **Real-time** | SignalR (WebSockets) | Live temperatuurupdates zonder polling |
+| Laag | Technologie | Relevantie voor ECS |
+|------|-------------|---------------------|
+| **Backend** | .NET 10 · C# · ASP.NET Core | Hoofdvacature-eis |
+| **Architectuur** | Domain-Driven Design · Clean Architecture | Schaalbaar en testbaar |
+| **Real-time** | SignalR (WebSockets) | Live temperatuuralerts zonder polling |
 | **Frontend** | Angular 17 (Standalone Components) | Hoofdvacature-eis |
-| **Containerisatie** | Docker · Docker Compose | Azure-ready, Kubernetes-klaar |
-| **API Docs** | Swagger / OpenAPI | Developer-friendly |
+| **Tests** | xUnit · FluentAssertions (14 tests) | Kwaliteitsborging |
+| **Containerisatie** | Docker · Docker Compose · Nginx | Azure-ready, Kubernetes-klaar |
+| **API Docs** | Swagger / OpenAPI | `localhost:5000/swagger` |
 
 ---
 
 ## Architectuur
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Angular Frontend                    │
-│  ┌─────────────────────┐  ┌────────────────────┐    │
-│  │  Trailer Optimizer   │  │  Reefer Monitor    │    │
-│  │  (visuele loading)  │  │  (live temp. gauge) │    │
-│  └──────────┬──────────┘  └─────────┬──────────┘    │
-└─────────────┼──────────────────────│──────────────┘
-              │ HTTP/REST             │ SignalR WS
-┌─────────────▼──────────────────────▼──────────────┐
-│                   .NET 8 Web API                    │
-│  ┌──────────────────┐   ┌──────────────────────┐   │
-│  │  Domain Layer    │   │  Application Layer   │   │
-│  │  ┌────────────┐  │   │  ┌────────────────┐  │   │
-│  │  │Trailer     │  │   │  │ConsolidationSvc│  │   │
-│  │  │Pallet      │  │   │  │ReeferSimulator │  │   │
-│  │  │Reefer      │  │   │  │(BackgroundSvc) │  │   │
-│  │  └────────────┘  │   │  └────────────────┘  │   │
-│  └──────────────────┘   └──────────────────────┘   │
-└──────────────────────────────────────────────────-──┘
-              │ Docker Compose
-┌─────────────▼──────────────────────────────────────┐
-│           Infrastructure (Azure-ready)              │
-│   Docker · Nginx reverse proxy · AKS-ready          │
-└─────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                Angular 17 Dashboard                    │
+│  ┌─────────────────┐ ┌──────────────┐ ┌────────────┐  │
+│  │ Trailer         │ │ Reefer       │ │ Brexit &   │  │
+│  │ Optimizer       │ │ Monitor      │ │ Douane     │  │
+│  │ (visuele bay)   │ │ (live gauge) │ │ validator  │  │
+│  └────────┬────────┘ └──────┬───────┘ └─────┬──────┘  │
+└───────────┼────────────────│─────────────────│─────────┘
+            │ HTTP REST       │ SignalR WS      │ HTTP REST
+┌───────────▼────────────────▼─────────────────▼─────────┐
+│                    .NET 10 Web API                       │
+│                                                          │
+│  Domain Layer (DDD Aggregates)                          │
+│  ┌──────────┐  ┌───────────────┐  ┌──────────────────┐  │
+│  │ Trailer  │  │ ReeferContain │  │ Shipment         │  │
+│  │ + Pallet │  │ er            │  │ + RunBrexitCheck │  │
+│  └──────────┘  └───────────────┘  └──────────────────┘  │
+│                                                          │
+│  Application Layer                                       │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ ConsolidationEngine  │  ReeferSimulator (BG svc) │   │
+│  └──────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────┘
+                  │ Docker Compose
+┌─────────────────▼────────────────────────────────────────┐
+│  Infrastructure — Azure-ready / Kubernetes-klaar          │
+│  Docker · Nginx reverse proxy · AKS deployment           │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### Domain-Driven Design — Aggregates
+### DDD Aggregates
 
 | Aggregate | Verantwoordelijkheid |
 |-----------|----------------------|
-| `Trailer` | Beheert geladen pallets, berekent bezettingsgraad en hoogtebenutting |
-| `Pallet` | Valueobject met gewicht, hoogte, type cargo en dichtheid |
-| `ReeferContainer` | Bijhoudt huidige/doeltemperatuur, genereert alerts bij afwijking |
-| `ConsolidationEngine` | Domeinservice: sorteert pallets op dichtheid (zwaar onderaan, licht bovenaan) |
-
----
-
-## Kernfunctionaliteiten
-
-### 1. ConsolidationEngine — Lading-algoritme
-
-```csharp
-// Sorteert pallets: zwaarst & dichtst onderaan (laag 1), lichtst bovenaan
-var sorted = pallets
-    .OrderByDescending(p => p.Density)
-    .ThenByDescending(p => p.WeightKg)
-    .ToList();
-```
-
-- Maximale benutting van de **3m60 trailerhoogte**
-- Berekent **CO₂-besparing** per geoptimaliseerde rit (gemiddeld 850kg CO₂/rit)
-- Rapporteert volumebenutting, totaalgewicht en niet-geplaatste pallets
-
-### 2. Live Reefer Monitoring via SignalR
-
-```
-Reefer IoT Simulator (BackgroundService)
-    → elke 5 seconden: temperatuurdrift simulatie
-    → bij afwijking > 1°C: Warning
-    → bij afwijking > 3°C: Critical + broadcast alert naar alle operators
-    → Angular dashboard: live update zonder page refresh
-```
-
-### 3. Visueel Loading Bay Dashboard
-
-- Angular-grid toont elke pallet als blok (kleurgecodeerd per cargoType)
-- Hoogte van blok = proportioneel aan pallethoogte
-- Hover = tooltips met client, gewicht, laagnummer
-- KPI-balk: bezettingsgraad, CO₂-besparing, on-time delivery
+| `Trailer` | Max 33 pallets, 360cm hoogte, berekent volumebenutting |
+| `Pallet` | Gewicht, hoogte, cargoType, dichtheid (kg/m³) |
+| `ReeferContainer` | Huidige vs. doeltemperatuur, genereert afwijkings-events |
+| `Shipment` | `RunBrexitCheck()` — valideert documenten per UK-zending |
+| `ConsolidationEngine` | Domeinservice: sorteert op dichtheid, berekent CO₂-besparing |
 
 ---
 
 ## Snel starten
 
 ### Vereisten
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 20+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) *(optioneel)*
 
-### Lokaal draaien (zonder Docker)
+### Lokaal — één commando
 
 ```bash
-# Terminal 1 — Backend
-cd backend/src/ECS.EcoLoad.API
-dotnet run
-# API draait op http://localhost:5000
-# Swagger UI: http://localhost:5000/swagger
-
-# Terminal 2 — Frontend
-cd frontend
-npm install
-npm start
-# Dashboard: http://localhost:4200
+git clone https://github.com/KippieG/ecs-ecoload.git
+cd ecs-ecoload
+bash run.sh
 ```
+
+| Service | URL |
+|---------|-----|
+| Dashboard | http://localhost:4200 |
+| API | http://localhost:5000 |
+| Swagger | http://localhost:5000/swagger |
 
 ### Met Docker Compose
 
 ```bash
 docker-compose up --build
-# Dashboard: http://localhost:4200
-# API:       http://localhost:5000/swagger
+```
+
+### Tests draaien
+
+```bash
+cd backend
+dotnet test --nologo
+# Passed! - Failed: 0, Passed: 14, Skipped: 0
 ```
 
 ---
@@ -144,14 +150,13 @@ docker-compose up --build
 
 | Method | Route | Beschrijving |
 |--------|-------|--------------|
-| `POST` | `/api/trailers/demo` | Voer demo-optimalisatie uit (28 pallets, willekeurige mix) |
+| `POST` | `/api/trailers/demo` | Demo-optimalisatie: 28 pallets, gemixte cargo |
 | `POST` | `/api/trailers/optimize` | Eigen palletlijst optimaliseren |
 | `GET`  | `/api/reefers` | Alle koelcontainers met live temperatuurstatus |
-| `GET`  | `/api/reefers/{id}` | Één koelcontainer opvragen |
 | `POST` | `/api/reefers/{id}/telemetry` | IoT temperatuurreading doorsturen |
+| `GET`  | `/api/customs` | Alle zendingen met Brexit-documentstatus |
+| `POST` | `/api/customs/check` | Nieuwe zending valideren |
 | `WS`   | `/hubs/reefer` | SignalR WebSocket hub |
-
-Volledige documentatie: `http://localhost:5000/swagger`
 
 ---
 
@@ -160,52 +165,54 @@ Volledige documentatie: `http://localhost:5000/swagger`
 ```
 ecs-ecoload/
 ├── backend/
-│   └── src/ECS.EcoLoad.API/
-│       ├── Domain/              # Pallet, Trailer, ReeferContainer, enums
-│       ├── Services/            # ConsolidationEngine, ReeferStore, ReeferSimulator
-│       ├── Controllers/         # TrailersController, ReefersController
-│       ├── Hubs/                # ReeferHub (SignalR)
-│       └── Program.cs
+│   ├── src/ECS.EcoLoad.API/
+│   │   ├── Domain/              ← DDD: Pallet, Trailer, ReeferContainer, Shipment
+│   │   ├── Services/            ← ConsolidationEngine, ReeferSimulator, Stores
+│   │   ├── Controllers/         ← Trailers, Reefers, Customs
+│   │   ├── Hubs/                ← ReeferHub (SignalR)
+│   │   └── Program.cs
+│   └── tests/ECS.EcoLoad.Tests/ ← 14 unit tests (xUnit + FluentAssertions)
 ├── frontend/
 │   └── src/app/
-│       ├── dashboard/           # Hoofd-layout, KPI-balk, verbindingsstatus
-│       ├── trailer-view/        # Visueel loading bay + ConsolidationEngine resultaat
-│       ├── reefer-monitor/      # Live temperatuurkaarten + kritieke alerts
-│       └── shared/
-│           ├── models/          # TypeScript interfaces (Pallet, Trailer, Reefer)
-│           └── services/        # ApiService (HTTP), SignalRService (WebSocket)
+│       ├── dashboard/           ← Hoofd-layout, KPI-balk, tab-navigatie
+│       ├── trailer-view/        ← Visuele loading bay + stats
+│       ├── reefer-monitor/      ← Live temperatuurkaarten + alerts
+│       ├── customs-check/       ← Brexit-documentvalidatie
+│       └── shared/              ← Models, ApiService, SignalRService
 ├── docker-compose.yml
+├── run.sh                       ← Één commando voor lokale opstart
 └── README.md
 ```
-
----
-
-## Roadmap (toekomstige uitbreidingen)
-
-- [ ] **Azure Service Bus** integratie voor echte Event-Driven Architecture tussen microservices
-- [ ] **MS SQL Server** met Entity Framework Core (nu: in-memory voor demo)
-- [ ] **Douane-module**: Brexit-check simulator (geldig EUR1-certificaat vereist voor UK-transport)
-- [ ] **Azure Kubernetes Service (AKS)** deployment met Helm charts
-- [ ] **Domain Events**: `PalletLoadedEvent`, `TrailerDispatchedEvent` voor audit trail
-- [ ] **Unit tests** met xUnit + Moq op de ConsolidationEngine
 
 ---
 
 ## Architectuurkeuzes
 
 **Waarom DDD en geen simpele CRUD?**
-ECS is een 24/7 logistiek bedrijf. Aparte domeinen (lading vs. temperatuur) kunnen onafhankelijk van elkaar schalen en onderhouden worden. Als de reefer-module een hotfix nodig heeft, mag de planningsmodule daar geen hinder van ondervinden.
+ECS is een 24/7 logistiek bedrijf. Aparte domeinen (lading vs. temperatuur vs. douane) kunnen onafhankelijk schalen en onderhouden worden. Als de reefer-module een hotfix nodig heeft, mag het boekingssysteem daar geen hinder van ondervinden.
 
-**Waarom SignalR in plaats van polling?**
-Temperatuurafwijkingen in koelcontainers moeten binnen seconden gemeld worden aan de operator. Polling elke 5s geeft onnodige serverbelasting; SignalR pusht updates enkel wanneer er iets verandert.
+**Waarom SignalR en geen polling?**
+Temperatuurafwijkingen in koelcontainers moeten binnen seconden bij de operator zijn. Polling elke 5s geeft onnodige serverbelasting; SignalR pusht enkel wanneer er iets verandert.
 
 **Waarom Docker-first?**
-De beschrijving in de vacature vermeldt Kubernetes en Docker als pluspunten. De applicatie is van dag één containerized zodat deployment naar Azure Kubernetes Service (AKS) een minimale stap is.
+De vacature vermeldt Kubernetes en Docker als pluspunten. De applicatie is van dag één containerized zodat deployment naar **Azure Kubernetes Service (AKS)** een minimale stap is.
 
 ---
 
-## Over de kandidaat
+## Roadmap
 
-Gebouwd door **Philippe Godfroy** als concreet bewijs van domeinkennis voor de ECS-vacature Software Developer (Zeebrugge).
+- [ ] Azure Service Bus integratie (echte EDA tussen microservices)
+- [ ] MS SQL Server + Entity Framework Core (nu: in-memory voor demo)
+- [ ] Azure Kubernetes Service (AKS) met Helm charts
+- [ ] Domain Events: `PalletLoadedEvent`, `TrailerDispatchedEvent` (audit trail)
+- [ ] Automatische CO₂-rapportage per week/maand
 
-> *"Ik zag dat ECS koploper is in het consolideren van ladingen via Super Mega Trailers en meer dan 1.000 koelcontainers beheert voor Britse retailers. Dit project combineert beide uitdagingen in één tool die een ECS-planner direct herkent."*
+---
+
+<div align="center">
+
+**Philippe Godfroy** · [philgodf@gmail.com](mailto:philgodf@gmail.com)
+
+*Gebouwd als portfolio project voor de Software Developer vacature bij ECS European Containers, Zeebrugge.*
+
+</div>

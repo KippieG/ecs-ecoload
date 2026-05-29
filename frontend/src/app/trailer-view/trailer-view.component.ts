@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../shared/services/api.service';
 import { ConsolidationResult, LoadedPallet } from '../shared/models/trailer.model';
@@ -8,205 +8,196 @@ import { ConsolidationResult, LoadedPallet } from '../shared/models/trailer.mode
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="trailer-view">
+    <div>
       <div class="section-header">
-        <h2>Trailer Lading Optimizer</h2>
-        <button class="btn-demo" (click)="runDemo()" [disabled]="loading">
-          {{ loading ? 'Optimaliseren...' : '▶ Demo Optimalisatie' }}
+        <div>
+          <h2 class="section-title">Super Mega Trailer Optimizer</h2>
+          <p class="section-sub">ConsolidationEngine · DDD · zwaar onderaan, licht bovenaan · 3m60 hoogte</p>
+        </div>
+        <button class="run-btn" (click)="runDemo()" [disabled]="loading">
+          <svg *ngIf="!loading" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM9.555 7.168A1 1 0 0 0 8 8v4a1 1 0 0 0 1.555.832l3-2a1 1 0 0 0 0-1.664l-3-2z"/></svg>
+          <span class="spin" *ngIf="loading">⟳</span>
+          {{ loading ? 'Optimaliseren…' : 'Demo Optimalisatie' }}
         </button>
       </div>
 
-      <div *ngIf="result" class="result-container">
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-value">{{ result.trailer.volumeUtilizationPct }}%</div>
-            <div class="stat-label">Volume benut</div>
-            <div class="stat-bar"><div class="stat-fill" [style.width.%]="result.trailer.volumeUtilizationPct"></div></div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ result.trailer.totalWeightKg | number:'1.0-0' }} kg</div>
-            <div class="stat-label">Totaal gewicht</div>
-          </div>
-          <div class="stat-card eco">
-            <div class="stat-value">{{ result.estimatedCo2SavedKg | number:'1.0-0' }} kg</div>
-            <div class="stat-label">CO₂ bespaard</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ result.tripsSaved }}</div>
-            <div class="stat-label">Ritten bespaard</div>
-          </div>
+      <!-- Stats -->
+      <div *ngIf="result" class="stats-grid">
+        <div class="stat">
+          <div class="stat-val">{{ result.trailer.volumeUtilizationPct }}%</div>
+          <div class="stat-label">Volume benut</div>
+          <div class="stat-bar"><div class="stat-fill" [style.width.%]="result.trailer.volumeUtilizationPct"></div></div>
         </div>
-
-        <div class="summary-box">{{ result.optimizationSummary }}</div>
-
-        <div class="trailer-label">
-          <span class="trailer-num">{{ result.trailer.trailerNumber }}</span>
-          <span class="trailer-dest">→ {{ result.trailer.destination }}</span>
-          <span class="trailer-height">Super Mega Trailer (360cm)</span>
+        <div class="stat">
+          <div class="stat-val">{{ result.trailer.loadedPallets.length }}<span class="stat-of">/{{ result.trailer.loadedPallets.length + result.unassignedPallets.length }}</span></div>
+          <div class="stat-label">Pallets geladen</div>
         </div>
+        <div class="stat stat-eco">
+          <div class="stat-val">{{ result.estimatedCo2SavedKg | number:'1.0-0' }} kg</div>
+          <div class="stat-label">CO₂ bespaard</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">{{ result.trailer.totalWeightKg | number:'1.0-0' }}</div>
+          <div class="stat-label">kg totaalgewicht</div>
+        </div>
+      </div>
 
-        <div class="trailer-visual">
-          <div class="trailer-outline">
-            <div class="height-marker">360cm ↕</div>
-            <div class="pallet-grid">
-              <div
-                *ngFor="let lp of result.trailer.loadedPallets"
-                class="pallet-slot"
-                [class]="'cargo-' + lp.pallet.cargoType.toLowerCase()"
-                [title]="getPalletTooltip(lp)"
-                [style.height.px]="getPalletHeight(lp)"
-              >
-                <span class="pallet-client">{{ lp.pallet.client.split(' ')[0] }}</span>
-                <span class="pallet-weight">{{ lp.pallet.weightKg | number:'1.0-0' }}kg</span>
-              </div>
+      <!-- Summary -->
+      <div *ngIf="result" class="summary-bar">
+        <span class="trailer-tag">{{ result.trailer.trailerNumber }}</span>
+        <span class="dest-tag">→ {{ result.trailer.destination }}</span>
+        <span class="height-tag">⬍ Super Mega Trailer 3m60</span>
+        <span class="summary-text">{{ result.optimizationSummary }}</span>
+      </div>
+
+      <!-- Visual Bay -->
+      <div *ngIf="result" class="bay-section">
+        <div class="bay-label">
+          <span>Laadruimte (bovenaanzicht · {{ result.trailer.loadedPallets.length }} pallets)</span>
+        </div>
+        <div class="bay-frame">
+          <div class="bay-grid">
+            <div
+              *ngFor="let lp of result.trailer.loadedPallets"
+              class="pallet"
+              [class]="'cargo-' + lp.pallet.cargoType.toLowerCase()"
+              [style.height.px]="palletH(lp)"
+              [title]="palletTip(lp)"
+            >
+              <span class="pallet-cl">{{ lp.pallet.client.split(' ')[0] }}</span>
+              <span class="pallet-wt">{{ lp.pallet.weightKg | number:'1.0-0' }}kg</span>
             </div>
           </div>
         </div>
 
         <div class="legend">
-          <span class="legend-item cargo-fmcg">FMCG</span>
-          <span class="legend-item cargo-ambient">Ambient</span>
-          <span class="legend-item cargo-chilled">Gekoeld</span>
-          <span class="legend-item cargo-frozen">Diepvries</span>
-        </div>
-
-        <div *ngIf="result.unassignedPallets.length > 0" class="unassigned">
-          <span class="unassigned-count">{{ result.unassignedPallets.length }} pallets niet geladen</span>
-          <span class="unassigned-hint">(extra trailer nodig)</span>
+          <span class="leg cargo-fmcg">FMCG</span>
+          <span class="leg cargo-ambient">Ambient</span>
+          <span class="leg cargo-chilled">Gekoeld</span>
+          <span class="leg cargo-frozen">Diepvries</span>
         </div>
       </div>
 
-      <div *ngIf="!result && !loading" class="empty-state">
-        <div class="empty-icon">🚛</div>
-        <p>Klik op "Demo Optimalisatie" om de ConsolidationEngine te starten</p>
-        <p class="empty-sub">28 demo-pallets worden gesorteerd op gewicht & volume voor maximale benutting van de 3m60 Super Mega Trailer</p>
+      <!-- Unassigned -->
+      <div *ngIf="result && result.unassignedPallets.length > 0" class="unassigned">
+        <span class="ua-num">{{ result.unassignedPallets.length }} pallets</span>
+        niet ingepast — extra trailer vereist
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="!result && !loading" class="empty">
+        <div class="empty-icon">
+          <svg viewBox="0 0 64 64" fill="none">
+            <rect x="4" y="28" width="56" height="24" rx="4" fill="#2d1a22" stroke="#8D1D45" stroke-width="2"/>
+            <rect x="8" y="22" width="40" height="8" rx="2" fill="#8D1D45" opacity=".6"/>
+            <circle cx="16" cy="56" r="5" fill="#8D1D45"/>
+            <circle cx="48" cy="56" r="5" fill="#8D1D45"/>
+            <path d="M60 36 L60 52" stroke="#F8CE3E" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p class="empty-title">Klik op "Demo Optimalisatie"</p>
+        <p class="empty-sub">De ConsolidationEngine sorteert 28 demo-pallets op gewicht & dichtheid<br>voor maximale benutting van de ECS Super Mega Trailer (3m60).</p>
       </div>
     </div>
   `,
   styles: [`
-    .trailer-view { padding: 0 0 24px; }
-    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .section-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; color: #e2e8f0; }
+    .section-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .section-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+    .section-sub { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
 
-    .btn-demo {
-      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-      color: white;
-      border: none;
-      padding: 8px 18px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 600;
-      transition: opacity 0.2s;
+    .run-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--ecs-primary); color: white;
+      border: none; padding: 9px 18px; border-radius: 9px;
+      cursor: pointer; font-size: 0.82rem; font-weight: 700;
+      font-family: inherit; transition: background 0.15s; flex-shrink: 0;
     }
-    .btn-demo:hover { opacity: 0.85; }
-    .btn-demo:disabled { opacity: 0.5; cursor: not-allowed; }
+    .run-btn svg { width: 16px; height: 16px; }
+    .run-btn:hover { background: var(--ecs-primary-light); }
+    .run-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
-    .stat-card {
-      background: #1e293b;
-      border-radius: 10px;
-      padding: 12px 14px;
-      border: 1px solid #334155;
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+    .stat {
+      background: var(--bg-root); border: 1px solid var(--bg-border);
+      border-radius: 10px; padding: 12px 14px;
     }
-    .stat-card.eco { border-color: #166534; background: #052e16; }
-    .stat-value { font-size: 1.3rem; font-weight: 700; color: #e2e8f0; }
-    .stat-card.eco .stat-value { color: #4ade80; }
-    .stat-label { font-size: 0.7rem; color: #64748b; margin-top: 2px; }
-    .stat-bar { height: 3px; background: #0f172a; border-radius: 2px; margin-top: 8px; overflow: hidden; }
-    .stat-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #06b6d4); border-radius: 2px; }
+    .stat.stat-eco { border-color: var(--ecs-primary-dark); background: #1a0010; }
+    .stat-val { font-size: 1.4rem; font-weight: 800; color: var(--text-primary); }
+    .stat.stat-eco .stat-val { color: var(--ecs-accent); }
+    .stat-of { font-size: 0.9rem; font-weight: 400; color: var(--text-muted); }
+    .stat-label { font-size: 0.62rem; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .4px; }
+    .stat-bar { height: 3px; background: var(--bg-dark); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+    .stat-fill { height: 100%; background: linear-gradient(90deg, var(--ecs-primary), var(--ecs-accent)); border-radius: 2px; }
 
-    .summary-box {
-      background: #0f172a;
-      border: 1px solid #1e3a5f;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 0.78rem;
-      color: #94a3b8;
-      margin-bottom: 14px;
-      line-height: 1.5;
+    .summary-bar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      background: var(--bg-root); border: 1px solid var(--bg-border);
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;
+      font-size: 0.72rem;
     }
+    .trailer-tag { background: var(--ecs-primary); color: white; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-family: monospace; }
+    .dest-tag { color: var(--text-secondary); }
+    .height-tag { background: var(--status-warn-bg); color: var(--ecs-accent); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; }
+    .summary-text { color: var(--text-muted); }
 
-    .trailer-label { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
-    .trailer-num { font-size: 0.8rem; font-weight: 700; color: #38bdf8; font-family: monospace; }
-    .trailer-dest { font-size: 0.8rem; color: #94a3b8; }
-    .trailer-height { font-size: 0.7rem; background: #1e3a5f; color: #60a5fa; padding: 2px 8px; border-radius: 4px; margin-left: auto; }
+    .bay-section { margin-bottom: 14px; }
+    .bay-label { font-size: 0.68rem; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
 
-    .trailer-visual { margin-bottom: 12px; }
-    .trailer-outline {
-      border: 2px solid #334155;
-      border-radius: 8px;
-      padding: 12px;
-      background: #0f172a;
-      position: relative;
-      min-height: 160px;
+    .bay-frame {
+      background: var(--bg-root); border: 1px solid var(--ecs-primary-dark);
+      border-radius: 10px; padding: 12px; position: relative;
     }
-    .height-marker { position: absolute; left: -48px; top: 50%; transform: translateY(-50%); font-size: 0.65rem; color: #475569; writing-mode: vertical-rl; }
+    .bay-grid { display: grid; grid-template-columns: repeat(11, 1fr); gap: 3px; }
 
-    .pallet-grid {
-      display: grid;
-      grid-template-columns: repeat(11, 1fr);
-      gap: 3px;
+    .pallet {
+      border-radius: 4px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 38px; overflow: hidden; cursor: default;
+      transition: transform 0.12s, box-shadow 0.12s;
     }
-    .pallet-slot {
-      border-radius: 4px;
-      padding: 2px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 40px;
-      cursor: default;
-      transition: transform 0.15s;
-      overflow: hidden;
-    }
-    .pallet-slot:hover { transform: scale(1.08); z-index: 2; }
-    .pallet-client { font-size: 0.55rem; font-weight: 700; text-align: center; line-height: 1.1; }
-    .pallet-weight { font-size: 0.5rem; opacity: 0.7; }
+    .pallet:hover { transform: scale(1.1); z-index: 5; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+    .pallet-cl { font-size: 0.52rem; font-weight: 700; text-align: center; line-height: 1; }
+    .pallet-wt { font-size: 0.45rem; opacity: .65; }
 
-    .cargo-fmcg { background: #1e3a8a; color: #93c5fd; }
-    .cargo-ambient { background: #14532d; color: #86efac; }
-    .cargo-chilled { background: #164e63; color: #67e8f9; }
-    .cargo-frozen { background: #1e1b4b; color: #a5b4fc; }
+    .cargo-fmcg    { background: var(--ecs-primary); color: #ffc8d8; }
+    .cargo-ambient { background: #0f3d20; color: #86efac; }
+    .cargo-chilled { background: #0c2e45; color: #7dd3fc; }
+    .cargo-frozen  { background: #1a0f4a; color: #c4b5fd; }
 
-    .legend { display: flex; gap: 10px; margin-bottom: 12px; }
-    .legend-item { font-size: 0.7rem; padding: 3px 10px; border-radius: 4px; }
+    .legend { display: flex; gap: 8px; margin-top: 10px; }
+    .leg { font-size: 0.65rem; padding: 3px 10px; border-radius: 4px; font-weight: 600; }
 
     .unassigned {
-      display: flex; gap: 8px; align-items: center;
-      background: #292216; border: 1px solid #92400e; border-radius: 8px;
-      padding: 8px 14px;
+      background: var(--status-warn-bg); border: 1px solid var(--ecs-accent-dark);
+      border-radius: 8px; padding: 9px 14px; font-size: 0.78rem; color: var(--ecs-accent);
     }
-    .unassigned-count { font-size: 0.8rem; color: #fbbf24; font-weight: 600; }
-    .unassigned-hint { font-size: 0.75rem; color: #92400e; }
+    .ua-num { font-weight: 700; }
 
-    .empty-state { text-align: center; padding: 40px 20px; color: #475569; }
-    .empty-icon { font-size: 3rem; margin-bottom: 12px; }
-    .empty-state p { margin: 4px 0; font-size: 0.9rem; }
-    .empty-sub { font-size: 0.78rem; color: #334155; max-width: 480px; margin: 8px auto 0; }
+    .empty { text-align: center; padding: 48px 24px; }
+    .empty-icon svg { width: 80px; height: 80px; margin: 0 auto 16px; display: block; }
+    .empty-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+    .empty-sub { font-size: 0.78rem; color: var(--text-muted); line-height: 1.6; }
   `]
 })
-export class TrailerViewComponent implements OnInit {
+export class TrailerViewComponent {
   result: ConsolidationResult | null = null;
   loading = false;
 
   constructor(private api: ApiService) {}
 
-  ngOnInit() {}
-
   runDemo() {
     this.loading = true;
     this.api.runDemoOptimization().subscribe({
-      next: res => { this.result = res; this.loading = false; },
+      next: r => { this.result = r; this.loading = false; },
       error: () => { this.loading = false; }
     });
   }
 
-  getPalletHeight(lp: LoadedPallet): number {
-    return Math.max(38, lp.pallet.heightCm * 0.28);
-  }
+  palletH(lp: LoadedPallet) { return Math.max(36, lp.pallet.heightCm * 0.27); }
 
-  getPalletTooltip(lp: LoadedPallet): string {
-    return `${lp.pallet.client}\n${lp.pallet.weightKg}kg · ${lp.pallet.heightCm}cm\nLaag ${lp.layer}`;
+  palletTip(lp: LoadedPallet) {
+    return `${lp.pallet.client}\n${lp.pallet.weightKg}kg · ${lp.pallet.heightCm}cm · ${lp.pallet.cargoType}\nLaag ${lp.layer} pos ${lp.positionInLayer}`;
   }
 }
