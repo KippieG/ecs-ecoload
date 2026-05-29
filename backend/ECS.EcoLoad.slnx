@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ECS.EcoLoad.API/ECS.EcoLoad.API.csproj" />
+  </Folder>
+</Solution>
