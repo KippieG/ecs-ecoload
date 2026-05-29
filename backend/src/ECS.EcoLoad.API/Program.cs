@@ -7,11 +7,17 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "ECS EcoLoad & Temp Optimizer API", Version = "v1" });
+    c.SwaggerDoc("v1", new()
+    {
+        Title = "ECS EcoLoad & Temp Optimizer API",
+        Version = "v1",
+        Description = "Supply chain intelligence voor ECS European Containers — Zeebrugge"
+    });
 });
 
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ReeferStore>();
+builder.Services.AddSingleton<ShipmentStore>();
 builder.Services.AddSingleton<ConsolidationEngine>();
 builder.Services.AddHostedService<ReeferSimulator>();
 
@@ -24,7 +30,11 @@ builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
 var app = builder.Build();
 
 app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "ECS EcoLoad API v1"));
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ECS EcoLoad API v1");
+    c.DocumentTitle = "ECS EcoLoad API";
+});
 
 app.UseCors();
 app.UseAuthorization();

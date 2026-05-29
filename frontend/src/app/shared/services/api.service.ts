@@ -3,10 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ReeferContainer } from '../models/reefer.model';
 import { ConsolidationResult } from '../models/trailer.model';
+import { Shipment } from '../models/shipment.model';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private base = 'http://localhost:5000/api';
+  private readonly base = 'http://localhost:5000/api';
 
   constructor(private http: HttpClient) {}
 
@@ -16,5 +17,9 @@ export class ApiService {
 
   runDemoOptimization(): Observable<ConsolidationResult> {
     return this.http.post<ConsolidationResult>(`${this.base}/trailers/demo`, {});
+  }
+
+  getShipments(): Observable<Shipment[]> {
+    return this.http.get<Shipment[]>(`${this.base}/customs`);
   }
 }
